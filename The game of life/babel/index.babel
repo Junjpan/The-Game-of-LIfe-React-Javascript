@@ -1,0 +1,180 @@
+// Handling cloned objects
+//http://stackoverflow.com/questions/122102/what-is-the-most-efficient-way-to-clone-an-object
+
+class Button extends React.Component{
+  size=()=>{
+    let gridsize=this.refs.size.value;
+    this.props.size(gridsize);
+  }
+
+
+
+
+  render(){
+
+    return(<div>
+          <button onClick={this.props.stop}>STOP</button>
+          <button onClick={this.props.start}>START</button>
+          <button onClick={this.props.clear}>CLEAR</button>
+          <button onClick={this.props.seed}>SEED</button><br />
+          <h4>SPEED:</h4>
+          <button onClick={this.props.slow}>SLOW</button>
+          <button onClick={this.props.medium}>MEDIUM</button>
+          <button onClick={this.props.fast}>FAST</button><br />
+          <h4>BOARD SIZE:</h4>
+          <select ref="size" onChange={this.size} className="select">
+          <option value="5030" >SIZE:50 X 30</option>
+          <option value="7050">SIZE:70 X 50</option>
+          <option value="3010">SIZE:30 X 10</option>
+          </select>
+           </div>)
+  }
+}
+
+
+
+class Grid extends React.Component{
+  selectCell(row,col){
+    this.props.selectCell(row,col);
+
+  }
+
+  render(){
+    let widthVal=this.props.col*15+1;
+    let rowArray=[];
+    let cellClass="";
+    for(var i=0;i<this.props.row;i++){
+      for(var j=0;j<this.props.col;j++){
+        var cellId=i+"_"+j;
+        cellClass=this.props.fullgrid[i][j] ? "cell on" :"cell off";
+        rowArray.push(<div className={cellClass} key={cellId} onClick={this.selectCell.bind(this,i,j)}></div>);
+      }
+    }
+    return(<div className="grid-container" style={{width:widthVal}}>
+        {rowArray}
+          </div>)
+  }
+}
+
+class Maingrid extends React.Component{
+  constructor(){
+    super();
+    this.row=30;
+    this.col=50;
+    this.speed=500;
+    this.state={
+      generation:0,
+      fullgrid:Array(this.row).fill().map(()=>Array(this.col).fill(false))
+    }
+  }
+
+  selectCell(row,col){
+    //console.log(row,col);
+    var arr=this.state.fullgrid;
+    arr[row][col]=!arr[row][col];
+    this.setState({fullgrid:arr});
+  }
+
+  seed(){
+    var arr1=this.state.fullgrid;
+ for(var i=0;i<this.row;i++){
+      for(var j=0;j<this.col;j++){
+    if(Math.floor(Math.random()*6)===1){
+      arr1[i][j]=true;
+    }
+      }
+    }
+  this.setState({fullgrid:arr1});
+  }
+
+  autoStart(){
+ let arr=this.state.fullgrid;
+let arr2=arrayClone(this.state.fullgrid);
+
+    for(var i=0;i<this.row;i++){
+      for(var j=0;j<this.col;j++){
+        let count=0;
+        if(i>0){if(arr[i-1][j]){count++;}}
+        if(i>0&&j>0){if(arr[i-1][j-1]){count++;}}
+        if(i>0&&j<this.col-1){if(arr[i-1][j+1]){count++;}}
+        if(j>0){if(arr[i][j-1]){count++;}}
+        if(j<this.col-1){if(arr[i][j+1]){count++;}}
+        if(i<this.row-1){if(arr[i+1][j]){count++;}}
+        if(i<this.row-1&&j>0){if(arr[i+1][j-1]){count++;}}
+        if(i<this.row-1&&j<this.col-1){if(arr[i+1][j+1]){count++;}}
+        if(arr[i][j]&&(count<2||count>3)){arr2[i][j]=false;}
+        if(!arr[i][j]&&count===3){arr2[i][j]=true;}
+
+      }
+    }
+
+    this.setState({fullgrid:arr2,
+                   generation:this.state.generation+1});
+  }
+
+  start(){
+    clearInterval(this.stopId);
+   this.stopId=setInterval(this.autoStart.bind(this),this.speed);
+  }
+
+  stop(){
+    clearInterval(this.stopId);
+  }
+
+  clear(){
+    clearInterval(this.stopId);
+    this.setState({generation:0,
+                  fullgrid:Array(this.row).fill().map(()=>Array(this.col).fill(false))});
+  }
+  slow(){
+    this.speed=2000;
+    this.start();
+  }
+  fast(){
+    this.speed=100;
+    this.start();
+  }
+  medium=()=>{
+    this.speed=500;
+    this.start();
+  }
+
+  size=(size)=>{
+  this.clear();
+    let col=parseInt(size.slice(0,2),10);//it is always a good practice to pass radix with parseInt-parseInt(string,radix);
+    let row=parseInt(size.slice(2),10);
+   this.col=col;
+   this.row=row;
+   this.setState({generation:0,
+                 fullgrid:Array(this.row).fill().map(()=>Array(this.col).fill(false))});
+
+  }
+
+  componentDidMount(){
+    this.seed();
+    this.start();
+  }
+
+  render(){
+    return(<div className="main">
+           <h1>The Game of life</h1>
+           <Grid row={this.row} col={this.col} fullgrid={this.state.fullgrid} selectCell={this.selectCell.bind(this)}></Grid>
+           <h4>GENERATIONS: <span style={{color:"white",fontSize:"18px"}}>{this.state.generation}</span></h4>
+           <Button stop={this.stop.bind(this)}
+                   start={this.start.bind(this)}
+                   clear={this.clear.bind(this)}
+                   slow={this.slow.bind(this)}
+                   medium={this.medium}
+                   fast={this.fast.bind(this)}
+                   size={this.size}
+                   seed={this.seed.bind(this)}
+                   />
+
+           </div>);
+  }
+}
+
+function arrayClone(arr) {
+return JSON.parse(JSON.stringify(arr));
+}// if this is not a nested array, Array.slice(0) will do the job, since this is a nested array, we need to use JSON.parsse and JSON.stringify for deep clone
+ReactDOM.render(<Maingrid />, document.getElementById('root'));
